@@ -1,0 +1,32 @@
+{
+  "host": "resultados.tse.jus.br",
+  "ambiente": "oficial",
+  "ciclo": "ele2026",
+  "pleito": "3220",
+  "eleicoes_por_cargo": {
+    "0001": "6257",
+    "0003": "6259",
+    "0005": "6259",
+    "0006": "6259",
+    "0007": "6259",
+    "0008": "6259",
+    "0025": "6261"
+  },
+  "cargos_interesse": {
+    "0001": "Presidente",
+    "0003": "Governador",
+    "0005": "Senador",
+    "0006": "Deputado Federal",
+    "0007": "Deputado Estadual",
+    "0008": "Deputado Distrital",
+    "0025": "Conselheiro Distrital"
+  },
+  "ufs": [
+    "ac","al","am","ap","ba","ce","df","es","go","ma","mg","ms","mt","pa",
+    "pb","pe","pi","pr","rj","rn","ro","rr","rs","sc","se","sp","to"
+  ],
+  "saida_dir": "dados_baixados",
+  "user_agent": "painel-eleicoes-2026/1.0 (uso pessoal, conforme instrucoes publicas do TSE)",
+  "netlify_url": "",
+  "dados_publicos_repo": "https://github.com/DeniOgatha/painel-eleicoes-2026-dados.git"
+}

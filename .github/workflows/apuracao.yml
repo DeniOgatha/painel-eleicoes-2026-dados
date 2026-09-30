@@ -1,0 +1,82 @@
+# Apuracao ao vivo rodando no GitHub (sem depender do PC).
+#
+# COMO USAR: aba "Actions" deste repositorio -> "Apuracao ao vivo" ->
+# botao "Run workflow" -> "Run workflow". Roda por HORAS horas consultando o
+# TSE a cada INTERVALO segundos e publicando aqui (live.json, historicos e
+# status.json) - o mesmo que o piloto-automatico.bat faz no PC.
+#
+# Cada execucao do GitHub dura no maximo 6h; com "continuar" = sim, ao fim do
+# periodo ela dispara uma nova execucao sozinha, ate a data/hora "ate".
+# Para PARAR: na execucao em andamento, botao "Cancel workflow".
+#
+# Repo publico = minutos de GitHub Actions ilimitados (sem custo).
+name: Apuracao ao vivo
+
+on:
+  workflow_dispatch:
+    inputs:
+      horas:
+        description: "Horas desta execucao (max 5.5)"
+        default: "5.5"
+      intervalo:
+        description: "Segundos entre consultas ao TSE"
+        default: "60"
+      continuar:
+        description: "Ao terminar, iniciar outra execucao sozinha? (sim/nao)"
+        default: "sim"
+      ate:
+        description: "Nao iniciar novas execucoes depois de (horario de Brasilia)"
+        default: "2026-10-05 06:00"
+
+permissions:
+  contents: write   # publicar os dados neste repo
+  actions: write    # disparar a proxima execucao (encadeamento)
+
+# uma execucao por vez; a proxima (encadeada) espera esta terminar
+concurrency:
+  group: apuracao
+  cancel-in-progress: false
+
+jobs:
+  apuracao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependencias
+        run: pip install requests
+
+      - name: Identidade do git
+        run: |
+          git config user.name "apuracao-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Loop de apuracao
+        env:
+          INTERVALO: ${{ inputs.intervalo }}
+          HORAS: ${{ inputs.horas }}
+        run: |
+          export HORAS_SEG=$(python -c "import os; print(int(min(float(os.environ['HORAS']), 5.5) * 3600))")
+          bash pipeline/rodar_nuvem.sh
+
+      - name: Disparar a proxima execucao
+        if: ${{ !cancelled() && inputs.continuar == 'sim' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATE: ${{ inputs.ate }}
+        run: |
+          agora=$(date +%s)
+          limite=$(TZ=America/Sao_Paulo date -d "$ATE" +%s)
+          if [ "$agora" -lt "$limite" ]; then
+            gh workflow run apuracao.yml --ref "${{ github.ref_name }}" \
+              -f horas="${{ inputs.horas }}" -f intervalo="${{ inputs.intervalo }}" \
+              -f continuar=sim -f ate="$ATE"
+            echo "Proxima execucao disparada."
+          else
+            echo "Passou de $ATE (Brasilia) - nao disparo outra execucao."
+          fi

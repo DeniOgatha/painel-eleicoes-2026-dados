@@ -1,0 +1,22 @@
+
+# Planilhas e dados internos - NUNCA versionar (podem ter CPF, e-mail,
+# telefone, titulo de eleitor). O site so recebe o que ja e publico ou
+# derivado sem dado pessoal (ex.: ordem-novo.json = lista de SQ do TSE).
+*.xlsx
+*.xlsm
+*.xls
+*.ods
+*.csv
+*.tsv
+google_sheet*
+.env
+.env.*
+*.pem
+*.key
+
+# pastas de trabalho do pipeline rodando no GitHub Actions (pipeline/rodar_nuvem.sh)
+/pipeline/site/
+/pipeline/dados_baixados/
+/pipeline/dados_publicos
+/pipeline/__pycache__/
+/pipeline/ele-c_discover.json
