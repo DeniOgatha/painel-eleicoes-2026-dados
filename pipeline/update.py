@@ -35,6 +35,14 @@ SITE_DIR = os.path.join(HERE, "site")
 # O que aconteceu neste ciclo - usado por main() pra publicar o status.json
 # mesmo quando _main() sai cedo (sem dado novo do TSE, falha no download...).
 CICLO = {"consultou_tse": False, "publicou": False}
+STATUS = {}
+
+# Checagem de sanidade recusou por QUEDA de numero (validar_live.apenas_quedas)
+# neste tanto de ciclos seguidos -> publica sozinho: queda que persiste ~6 min
+# e' correcao do proprio TSE, nao arquivo quebrado. Sem isso a nuvem (sem
+# ninguem pra rodar --forcar) ficaria travada a noite toda.
+LIBERAR_APOS = 5
+RETENCAO_PATH = os.path.join(SITE_DIR, "retencao.json")
 
 
 def run(cmd, **kw):
@@ -42,14 +50,39 @@ def run(cmd, **kw):
     return subprocess.run(cmd, cwd=HERE, **kw)
 
 
+def escrever_status():
+    with open(os.path.join(SITE_DIR, "status.json"), "w", encoding="utf-8") as f:
+        json.dump(STATUS, f, ensure_ascii=False)
+
+
 def gravar_status(ok):
     """site/status.json: quando este PC tentou baixar do TSE pela ultima vez
     e se deu certo. As paginas mostram isso como "ultima consulta ao TSE"
     (site/status-tse.js) - se o piloto parar, o horario congela."""
-    agora = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
-    with open(os.path.join(SITE_DIR, "status.json"), "w", encoding="utf-8") as f:
-        json.dump({"ultimaTentativa": agora, "ok": bool(ok)}, f)
+    STATUS.clear()
+    STATUS["ultimaTentativa"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    STATUS["ok"] = bool(ok)
+    escrever_status()
     CICLO["consultou_tse"] = True
+
+
+def contar_retencao(problemas):
+    """+1 recusa seguida (site/retencao.json); devolve quantas ja' sao."""
+    try:
+        r = json.load(open(RETENCAO_PATH, encoding="utf-8"))
+    except (OSError, ValueError):
+        r = {}
+    r["vezes"] = int(r.get("vezes", 0)) + 1
+    r.setdefault("desde", datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"))
+    r["motivo"] = problemas[0]
+    with open(RETENCAO_PATH, "w", encoding="utf-8") as f:
+        json.dump(r, f, ensure_ascii=False)
+    return r["vezes"]
+
+
+def zerar_retencao():
+    if os.path.isfile(RETENCAO_PATH):
+        os.remove(RETENCAO_PATH)
 
 
 def trazer_publicado():
@@ -166,22 +199,39 @@ def _main(args):
     if (velho_bundle is not None and _fonte(novo_bundle) != (None, None)
             and _fonte(novo_bundle) == _fonte(velho_bundle) and not args.forcar):
         print("Sem dado novo do TSE desde a ultima publicacao (%s %s) - nada a publicar." % _fonte(novo_bundle))
+        zerar_retencao()  # o publicado ja' e' o dado atual do TSE: nada retido
         return 0
 
     problemas = validar_live.validar(velho_bundle, novo_bundle)
     if problemas:
         print()
         print("=" * 60)
-        print("CHECAGEM DE SANIDADE FALHOU - NADA FOI PUBLICADO")
+        print("CHECAGEM DE SANIDADE FALHOU")
         print("=" * 60)
         for p in problemas:
             print(" -", p)
         print()
         if not args.forcar:
-            print("Revise os numeros acima. Se ISSO FOR ESPERADO (ex: recontagem oficial),")
-            print("rode de novo com --forcar para publicar mesmo assim.")
-            return 1
-        print("--forcar usado: publicando mesmo com os problemas acima.")
+            vezes = contar_retencao(problemas)
+            so_quedas = validar_live.apenas_quedas(problemas)
+            if so_quedas and vezes >= LIBERAR_APOS:
+                print("Queda nos numeros persistiu por %d ciclos seguidos - e' o proprio TSE sustentando" % vezes)
+                print("esse numero (correcao), nao arquivo quebrado. Publicando automaticamente.")
+            else:
+                STATUS["retida"] = True
+                STATUS["motivo"] = problemas[0]
+                STATUS["recusasSeguidas"] = vezes
+                STATUS["liberaEmCiclos"] = (LIBERAR_APOS - vezes) if so_quedas else None
+                escrever_status()
+                if so_quedas:
+                    print("NADA FOI PUBLICADO (%d de %d). Se a queda continuar, publica sozinho em %d ciclo(s)."
+                          % (vezes, LIBERAR_APOS, LIBERAR_APOS - vezes))
+                else:
+                    print("NADA FOI PUBLICADO: parece arquivo quebrado - isso nunca e' liberado sozinho.")
+                    print("Se for esperado, rode de novo com --forcar para publicar mesmo assim.")
+                return 1
+        else:
+            print("--forcar usado: publicando mesmo com os problemas acima.")
         print()
 
     # so grava um ponto na linha do tempo da clausula de barreira APOS a checagem
@@ -195,6 +245,7 @@ def _main(args):
     if not publicar_dados.publicar(site_dir):
         print("ATENCAO: falha ao publicar no repo de dados - nada foi publicado. Ver mensagens acima.")
         return 1
+    zerar_retencao()
     CICLO["publicou"] = True
     print("Publicado.")
     return 0

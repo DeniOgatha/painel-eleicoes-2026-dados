@@ -71,6 +71,14 @@ def validar(old_bundle, new_bundle):
     return problemas
 
 
+def apenas_quedas(problemas):
+    """True se TODOS os problemas sao numero que CAIU (secoes/votos) - o
+    tipo que uma correcao do proprio TSE produz. Arquivo quebrado (cargo ou
+    UF sumiu, scopeStats vazio, % fora de 0-100) nunca entra aqui: isso o
+    update.py jamais libera sozinho."""
+    return bool(problemas) and all("CAIU" in p for p in problemas)
+
+
 def carregar_live_publicado(site_dir, timeout=15):
     """Le o live.json que esta publicado agora (HEAD do git), ou None se nao existir
     ainda (primeira publicacao - nada pra comparar, tudo bem seguir sem checagem).
