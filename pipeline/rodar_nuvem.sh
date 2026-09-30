@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Loop da apuracao no GitHub Actions (ver ../.github/workflows/apuracao.yml).
-# Faz o mesmo que o piloto-automatico.bat do PC: roda update.py a cada
+# Faz o mesmo que o "3 - Piloto automatico" (pasta EXECUTAR) do PC: roda update.py a cada
 # INTERVALO segundos ate completar HORAS_SEG. Os scripts desta pasta sao COPIA
 # dos de 2026_ao_vivo/ no PC - pra atualizar, rode copiar_para_nuvem.py la.
 #

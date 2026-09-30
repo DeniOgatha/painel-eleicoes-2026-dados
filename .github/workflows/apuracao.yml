@@ -3,7 +3,7 @@
 # COMO USAR: aba "Actions" deste repositorio -> "Apuracao ao vivo" ->
 # botao "Run workflow" -> "Run workflow". Roda por HORAS horas consultando o
 # TSE a cada INTERVALO segundos e publicando aqui (live.json, historicos e
-# status.json) - o mesmo que o piloto-automatico.bat faz no PC.
+# status.json) - o mesmo que o "3 - Piloto automatico" (pasta EXECUTAR) faz no PC.
 #
 # Cada execucao do GitHub dura no maximo 6h; com "continuar" = sim, ao fim do
 # periodo ela dispara uma nova execucao sozinha, ate a data/hora "ate".

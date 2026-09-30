@@ -69,7 +69,7 @@ def configurado():
 
 def sincronizar():
     """Traz o que ja esta publicado (git pull). Desde 2026-09-30 dois lugares
-    podem publicar no repo de dados - este PC (piloto-automatico.bat) e o
+    podem publicar no repo de dados - este PC (EXECUTAR\3 - Piloto automatico) e o
     GitHub Actions (.github/workflows/apuracao.yml no proprio repo de dados) -
     entao cada ciclo comeca alinhado com o outro. "-X theirs" no rebase =
     em conflito, fica o commit LOCAL (o mais novo deste ciclo)."""
