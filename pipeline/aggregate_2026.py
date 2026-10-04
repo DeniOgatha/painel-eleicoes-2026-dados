@@ -194,7 +194,12 @@ def main():
     agg_agrupamento = {}       # cargo -> scope -> label -> {votos,cand,eleitos,siglas:[...]}
     agrupamento_siglas = {}    # label -> set de siglas (para exibir "PT + PC do B")
     cand_rows = {}            # cargo -> [[scope, partido_idx, nmu, num, vap, elt, sqcand, st], ...]
-    fonte_dg_hg = {}          # dg/hg (data/hora de geracao) do TSE, capturado do 1o arquivo lido
+    # dg/hg (data/hora de geracao) do TSE: o MAIS RECENTE entre todos os
+    # arquivos. Era o do 1o arquivo lido (Presidente/br) - em 04/10 o TSE parou
+    # de regerar o de Presidente as 18:48 e seguiu nos estados, entao o update.py
+    # achava que nao tinha dado novo e nao publicava mais nada.
+    fonte_dg_hg = {}
+    fonte_chave = None
 
     if not os.path.isdir(SRC):
         print("Pasta de dados baixados nao encontrada:", SRC)
@@ -228,8 +233,15 @@ def main():
             scope = fname.replace("-u.json", "")
             d = json.load(open(os.path.join(cargo_dir, fname), encoding="utf-8"))
 
-            if not fonte_dg_hg and d.get("dg"):
-                fonte_dg_hg = {"dg": d.get("dg"), "hg": d.get("hg")}
+            if d.get("dg") and d.get("hg"):
+                try:
+                    dd, mm, yy = d["dg"].split("/")
+                    chave = (yy, mm, dd, d["hg"])
+                except ValueError:
+                    chave = None
+                if chave and (fonte_chave is None or chave > fonte_chave):
+                    fonte_chave = chave
+                    fonte_dg_hg = {"dg": d.get("dg"), "hg": d.get("hg")}
 
             s, e, v = d.get("s", {}), d.get("e", {}), d.get("v", {})
             ts, st = i(s.get("ts")), i(s.get("st"))
