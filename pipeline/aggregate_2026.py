@@ -9,6 +9,7 @@ Le os arquivos de resultado unificado (EA20) baixados pelo tse_downloader.py
 O "casco" do painel (HTML/CSS/JS) e fixo e nao precisa ser regerado a cada
 atualizacao - so quando estrutura/estilo mudar.
 """
+import hashlib
 import json
 import os
 from datetime import datetime, timezone
@@ -200,6 +201,12 @@ def main():
     # achava que nao tinha dado novo e nao publicava mais nada.
     fonte_dg_hg = {}
     fonte_chave = None
+    # Assinatura do conteudo baixado (cargo, area, dg/hg, idg, secoes
+    # totalizadas de cada arquivo): o TSE regera arquivo com mais secoes
+    # mantendo um dg/hg ANTERIOR ao maior ja' visto (04/10: Dep. Federal SP foi
+    # de 84% a 88% com hg 19:31:13, abaixo do 19:32:39 de outra UF), entao so'
+    # o horario nao basta pra saber se ha dado novo - ver update.py.
+    assinatura_partes = []
 
     if not os.path.isdir(SRC):
         print("Pasta de dados baixados nao encontrada:", SRC)
@@ -244,6 +251,7 @@ def main():
                     fonte_dg_hg = {"dg": d.get("dg"), "hg": d.get("hg")}
 
             s, e, v = d.get("s", {}), d.get("e", {}), d.get("v", {})
+            assinatura_partes.append("%s|%s|%s|%s|%s|%s" % (cargo_cod, scope, d.get("dg"), d.get("hg"), d.get("idg"), s.get("st")))
             ts, st = i(s.get("ts")), i(s.get("st"))
             te, comp, absten = i(e.get("te")), i(e.get("c")), i(e.get("a"))
             tv, vv, vb, vn = i(v.get("tv")), i(v.get("vv")), i(v.get("vb")), i(v.get("vn"))
@@ -378,6 +386,7 @@ def main():
     clausula_snapshot["geradoEm"] = gerado_em
 
     timeline_snapshot = computar_timeline_snapshot(scope_stats, cand_rows, partido_list, cargos_presentes)
+    timeline_snapshot["fonteAssinatura"] = hashlib.sha1(chr(10).join(sorted(assinatura_partes)).encode("utf-8")).hexdigest()[:16]
     timeline_snapshot["geradoEm"] = gerado_em
     timeline_snapshot["fonteDg"] = fonte_dg_hg.get("dg")
     timeline_snapshot["fonteHg"] = fonte_dg_hg.get("hg")

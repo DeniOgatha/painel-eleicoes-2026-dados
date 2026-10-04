@@ -164,9 +164,9 @@ def _main(args):
     live = json.load(open(os.path.join(site_dir, "live.json"), encoding="utf-8"))
     timeline = live.get("timelineSnapshot")
     if timeline:
-        chave = (timeline.get("fonteDg"), timeline.get("fonteHg"))
+        chave = (timeline.get("fonteDg"), timeline.get("fonteHg"), timeline.get("fonteAssinatura"))
         anterior = historico_clausula.ultimo_ponto(site_dir, "historico.json")
-        chave_anterior = (anterior.get("fonteDg"), anterior.get("fonteHg")) if anterior else None
+        chave_anterior = (anterior.get("fonteDg"), anterior.get("fonteHg"), anterior.get("fonteAssinatura")) if anterior else None
         if chave != chave_anterior:
             _, n_pontos = historico_clausula.apender(site_dir, timeline, nome_arquivo="historico.json")
             print("historico.json atualizado (%d pontos, fonte %s %s)" % (n_pontos, chave[0], chave[1]))
@@ -195,10 +195,12 @@ def _main(args):
     # o TSE parado. So publica quando a fonte do TSE (dg/hg) realmente mudou.
     def _fonte(bundle):
         t = (bundle or {}).get("timelineSnapshot") or {}
-        return (t.get("fonteDg"), t.get("fonteHg"))
-    if (velho_bundle is not None and _fonte(novo_bundle) != (None, None)
+        # fonteAssinatura (aggregate_2026.py) muda quando qualquer arquivo do
+        # TSE muda, mesmo sem dg/hg novo
+        return (t.get("fonteDg"), t.get("fonteHg"), t.get("fonteAssinatura"))
+    if (velho_bundle is not None and _fonte(novo_bundle)[:2] != (None, None)
             and _fonte(novo_bundle) == _fonte(velho_bundle) and not args.forcar):
-        print("Sem dado novo do TSE desde a ultima publicacao (%s %s) - nada a publicar." % _fonte(novo_bundle))
+        print("Sem dado novo do TSE desde a ultima publicacao (%s %s) - nada a publicar." % _fonte(novo_bundle)[:2])
         zerar_retencao()  # o publicado ja' e' o dado atual do TSE: nada retido
         return 0
 
