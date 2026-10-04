@@ -289,9 +289,12 @@ def main():
                         n_eleitos = sum(1 for c in cand_list if c.get("e") == "s")
 
                         pacc = agg_partido[cargo_cod].setdefault(scope, {}).setdefault(
-                            sg, {"votos": 0, "cand": 0, "eleitos": 0}
+                            sg, {"votos": 0, "cand": 0, "eleitos": 0, "legenda": 0}
                         )
                         pacc["votos"] += total_partido
+                        # so' os de legenda (voto so' no numero do partido) -
+                        # site/novo.html mostra como uma linha a parte
+                        pacc["legenda"] += legenda
                         pacc["cand"] += len(cand_list)
                         pacc["eleitos"] += n_eleitos
                         partido_total_geral[sg] = partido_total_geral.get(sg, 0) + total_partido
