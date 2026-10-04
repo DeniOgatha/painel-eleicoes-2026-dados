@@ -60,6 +60,7 @@ jobs:
         env:
           INTERVALO: ${{ inputs.intervalo }}
           HORAS: ${{ inputs.horas }}
+          GH_TOKEN: ${{ github.token }}   # disparar o pages.yml a cada ciclo
         run: |
           export HORAS_SEG=$(python -c "import os; print(int(min(float(os.environ['HORAS']), 5.5) * 3600))")
           bash pipeline/rodar_nuvem.sh

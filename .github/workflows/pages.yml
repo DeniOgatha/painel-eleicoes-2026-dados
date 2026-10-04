@@ -1,0 +1,53 @@
+# Publica os dados (live.json, historicos e status.json) no GitHub Pages:
+#   https://deniogatha.github.io/painel-eleicoes-2026-dados/
+#
+# Por que: as paginas liam direto de raw.githubusercontent.com, que guarda
+# cada arquivo em cache por 5 minutos (e ignora o "?_=" da URL) - o painel
+# ficava ate' 5 min atrasado. O Pages renova o cache a cada publicacao.
+#
+# Dispara em todo push do PC (piloto automatico) que mude os dados e por
+# "workflow_dispatch" a cada ciclo da nuvem (push feito pelo GITHUB_TOKEN nao
+# dispara "push" - ver pipeline/rodar_nuvem.sh). Uma publicacao por vez; se
+# chegarem varias enquanto uma roda, so' a mais nova espera (as do meio sao
+# descartadas) - e ela sempre pega o "main" mais recente.
+name: Publicar dados no Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["live.json", "historico.json", "historico-clausula.json", "status.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Montar a pasta publicada
+        run: |
+          mkdir _site
+          cp live.json historico.json historico-clausula.json status.json _site/
+          touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
