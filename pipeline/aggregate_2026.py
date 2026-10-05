@@ -255,6 +255,14 @@ def main():
             ts, st = i(s.get("ts")), i(s.get("st"))
             te, comp, absten = i(e.get("te")), i(e.get("c")), i(e.get("a"))
             tv, vv, vb, vn = i(v.get("tv")), i(v.get("vv")), i(v.get("vb")), i(v.get("vn"))
+            # Majoritarios (Presidente/Governador/Senador): o TSE calcula o % de
+            # cada candidato - e decide 1o/2o turno - sobre os validos
+            # COMPUTADOS (vvc = validos + anulados sub judice), nao sobre "vv".
+            # 04/10: Governador RJ com Garotinho sub judice - sobre vv o painel
+            # dava 50,8% pro 1o colocado, o TSE 49,27% e 2o turno. Proporcionais
+            # seguem com vv (base da clausula de desempenho).
+            if cargo_cod in ("0001", "0003", "0005") and v.get("vvc"):
+                vv = i(v.get("vvc"))
             vanul = i(v.get("van")) + i(v.get("vansj"))
 
             scope_stats[cargo_cod][scope] = {
