@@ -171,7 +171,7 @@ def _main(args):
             _, n_pontos = historico_clausula.apender(site_dir, timeline, nome_arquivo="historico.json")
             print("historico.json atualizado (%d pontos, fonte %s %s)" % (n_pontos, chave[0], chave[1]))
         else:
-            print("historico.json: sem dado novo da fonte (%s %s) - nao apendei ponto duplicado." % chave)
+            print("historico.json: sem dado novo da fonte (%s %s) - nao apendei ponto duplicado." % chave[:2])
 
     if args.no_push:
         print("`--no-push` usado: live.json atualizado localmente, nada foi enviado ao GitHub.")
