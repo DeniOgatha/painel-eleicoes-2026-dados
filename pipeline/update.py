@@ -15,6 +15,7 @@ Uso:
   python update.py --mock --no-push                                  (gera local sem enviar ao GitHub)
   python update.py --mock --forcar                                   (publica mesmo se a checagem falhar)
   python update.py --zerado --no-push                                (candidatos reais de 2026, tudo zerado)
+  python update.py --turno 2                                         (2o turno: site/live-2t.json e historico-2t.json)
 """
 import argparse
 import datetime
@@ -31,6 +32,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 SITE_DIR = os.path.join(HERE, "site")
+
+# Arquivos de dados do turno em andamento (--turno 2 usa os seus proprios e
+# nunca mexe no live.json/historico.json do 1o turno). Ajustado em main().
+TURNO = {"n": "1", "live": "live.json", "historico": "historico.json"}
 
 # O que aconteceu neste ciclo - usado por main() pra publicar o status.json
 # mesmo quando _main() sai cedo (sem dado novo do TSE, falha no download...).
@@ -93,7 +98,8 @@ def trazer_publicado():
     if not publicar_dados.configurado():
         return
     publicar_dados.sincronizar()
-    for nome in ("historico.json", "historico-clausula.json"):
+    nomes = ("historico.json", "historico-clausula.json") if TURNO["n"] == "1" else (TURNO["historico"],)
+    for nome in nomes:
         pub = os.path.join(publicar_dados.DADOS_DIR, nome)
         loc = os.path.join(SITE_DIR, nome)
         try:
@@ -120,7 +126,11 @@ def main():
     ap.add_argument("--no-push", action="store_true", help="nao faz git commit/push, so gera o live.json local")
     ap.add_argument("--forcar", action="store_true",
                      help="publica mesmo se a checagem de sanidade encontrar problemas (revise antes!)")
+    ap.add_argument("--turno", default="1", choices=["1", "2"],
+                     help="2 = segundo turno (config.json segundo_turno): gera/publica live-2t.json e historico-2t.json")
     args = ap.parse_args()
+    if args.turno == "2":
+        TURNO.update({"n": "2", "live": "live-2t.json", "historico": "historico-2t.json"})
     codigo = _main(args)
     # status.json vai a cada ciclo que consultou o TSE, mesmo sem dado novo
     # (quando o live.json foi publicado, o status ja' foi junto no mesmo commit)
@@ -151,27 +161,28 @@ def _main(args):
             cmd += ["--ciclo", args.ciclo]
         if args.eleicoes_json:
             cmd += ["--eleicoes-json", args.eleicoes_json]
+        cmd += ["--turno", TURNO["n"]]
         r = run(cmd)
         gravar_status(r.returncode in (0, 2))
         if r.returncode not in (0, 2):  # 2 = concluido com algumas falhas pontuais, ainda seguimos
             return 1
 
-    r = run([py, "aggregate_2026.py"])
+    r = run([py, "aggregate_2026.py", "--turno", TURNO["n"]])
     if r.returncode != 0:
         return 1
 
     site_dir = os.path.join(HERE, "site")
-    live = json.load(open(os.path.join(site_dir, "live.json"), encoding="utf-8"))
+    live = json.load(open(os.path.join(site_dir, TURNO["live"]), encoding="utf-8"))
     timeline = live.get("timelineSnapshot")
     if timeline:
         chave = (timeline.get("fonteDg"), timeline.get("fonteHg"), timeline.get("fonteAssinatura"))
-        anterior = historico_clausula.ultimo_ponto(site_dir, "historico.json")
+        anterior = historico_clausula.ultimo_ponto(site_dir, TURNO["historico"])
         chave_anterior = (anterior.get("fonteDg"), anterior.get("fonteHg"), anterior.get("fonteAssinatura")) if anterior else None
         if chave != chave_anterior:
-            _, n_pontos = historico_clausula.apender(site_dir, timeline, nome_arquivo="historico.json")
-            print("historico.json atualizado (%d pontos, fonte %s %s)" % (n_pontos, chave[0], chave[1]))
+            _, n_pontos = historico_clausula.apender(site_dir, timeline, nome_arquivo=TURNO["historico"])
+            print("%s atualizado (%d pontos, fonte %s %s)" % (TURNO["historico"], n_pontos, chave[0], chave[1]))
         else:
-            print("historico.json: sem dado novo da fonte (%s %s) - nao apendei ponto duplicado." % chave[:2])
+            print(TURNO["historico"] + ": sem dado novo da fonte (%s %s) - nao apendei ponto duplicado." % chave[:2])
 
     if args.no_push:
         print("`--no-push` usado: live.json atualizado localmente, nada foi enviado ao GitHub.")
@@ -184,7 +195,7 @@ def _main(args):
 
     novo_bundle = live
     try:
-        velho_bundle = publicar_dados.carregar_publicado()
+        velho_bundle = publicar_dados.carregar_publicado(TURNO["live"])
     except publicar_dados.GitIndisponivel as ex:
         print("ATENCAO: %s - nao da pra checar a sanidade dos dados agora. Nada foi publicado." % ex)
         print("Tente de novo em instantes. Se persistir, verifique se o git nao ficou travado")
@@ -244,7 +255,8 @@ def _main(args):
         hist_path, n_pontos = historico_clausula.apender(site_dir, snapshot)
         print("historico-clausula.json atualizado (%d pontos)" % n_pontos)
 
-    if not publicar_dados.publicar(site_dir):
+    arquivos = publicar_dados.ARQUIVOS if TURNO["n"] == "1" else publicar_dados.ARQUIVOS_2T
+    if not publicar_dados.publicar(site_dir, arquivos):
         print("ATENCAO: falha ao publicar no repo de dados - nada foi publicado. Ver mensagens acima.")
         return 1
     zerar_retencao()

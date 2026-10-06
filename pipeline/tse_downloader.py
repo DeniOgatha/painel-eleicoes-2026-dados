@@ -218,6 +218,21 @@ def _baixar_uma_tarefa(task, cfg, ciclo, headers, out_dir):
     return False, tipo, url, status
 
 
+def config_do_turno(cfg, turno):
+    """2o turno (--turno 2): outra eleicao no TSE (cdt2 do ele-c.json), so'
+    Presidente + Governador nas UFs que tiveram 2o turno, e pasta propria -
+    o 1o turno (dados_baixados/) fica intocado. Devolve um cfg ajustado."""
+    if str(turno) != "2":
+        return cfg
+    t2 = cfg.get("segundo_turno") or {}
+    novo = dict(cfg)
+    novo["eleicoes_por_cargo"] = t2["eleicoes_por_cargo"]
+    novo["cargos_interesse"] = {c: n for c, n in cfg["cargos_interesse"].items() if c in t2["eleicoes_por_cargo"]}
+    novo["ufs"] = t2["ufs_governador"]
+    novo["saida_dir"] = t2.get("saida_dir", "dados_baixados_2t")
+    return novo
+
+
 def cmd_update(cfg, ciclo, eleicoes_por_cargo, concorrencia=MAX_CONCORRENCIA_PADRAO):
     """
     ciclo: string do ciclo eleitoral (ex.: "ele2026")
@@ -316,9 +331,11 @@ def main():
                      help="Caminho para um JSON {cargo_cod: eleica_cod} (default: cfg['eleicoes_por_cargo'])")
     ap.add_argument("--concorrencia", type=int, default=MAX_CONCORRENCIA_PADRAO,
                      help="Requisicoes simultaneas ao baixar (padrao %d - limite oficial do TSE e 100/s por IP)" % MAX_CONCORRENCIA_PADRAO)
+    ap.add_argument("--turno", default="1", choices=["1", "2"],
+                     help="2 = segundo turno (cfg['segundo_turno']: outra eleicao, outra pasta)")
     args = ap.parse_args()
 
-    cfg = load_config()
+    cfg = config_do_turno(load_config(), args.turno)
 
     if args.discover:
         return cmd_discover(cfg)

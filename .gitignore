@@ -17,6 +17,7 @@ google_sheet*
 # pastas de trabalho do pipeline rodando no GitHub Actions (pipeline/rodar_nuvem.sh)
 /pipeline/site/
 /pipeline/dados_baixados/
+/pipeline/dados_baixados_2t/
 /pipeline/dados_publicos
 /pipeline/__pycache__/
 /pipeline/ele-c_discover.json

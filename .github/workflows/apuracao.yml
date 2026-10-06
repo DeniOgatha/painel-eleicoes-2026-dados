@@ -26,7 +26,10 @@ on:
         default: "sim"
       ate:
         description: "Nao iniciar novas execucoes depois de (horario de Brasilia)"
-        default: "2026-10-05 06:00"
+        default: "2026-10-26 06:00"
+      turno:
+        description: "Turno (1 ou 2) - o 2 publica live-2t.json e nao mexe no 1o turno"
+        default: "2"
 
 permissions:
   contents: write   # publicar os dados neste repo
@@ -60,6 +63,7 @@ jobs:
         env:
           INTERVALO: ${{ inputs.intervalo }}
           HORAS: ${{ inputs.horas }}
+          TURNO: ${{ inputs.turno }}
           GH_TOKEN: ${{ github.token }}   # disparar o pages.yml a cada ciclo
         run: |
           export HORAS_SEG=$(python -c "import os; print(int(min(float(os.environ['HORAS']), 5.5) * 3600))")
@@ -76,7 +80,7 @@ jobs:
           if [ "$agora" -lt "$limite" ]; then
             gh workflow run apuracao.yml --ref "${{ github.ref_name }}" \
               -f horas="${{ inputs.horas }}" -f intervalo="${{ inputs.intervalo }}" \
-              -f continuar=sim -f ate="$ATE"
+              -f continuar=sim -f ate="$ATE" -f turno="${{ inputs.turno }}"
             echo "Proxima execucao disparada."
           else
             echo "Passou de $ATE (Brasilia) - nao disparo outra execucao."

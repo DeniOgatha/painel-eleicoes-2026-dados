@@ -34,6 +34,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DADOS_DIR = os.path.join(HERE, "dados_publicos")
 CONFIG_PATH = os.path.join(HERE, "config.json")
 ARQUIVOS = ["live.json", "historico.json", "historico-clausula.json", "status.json"]
+# 2o turno (update.py --turno 2): arquivos proprios, o 1o turno fica como esta
+ARQUIVOS_2T = ["live-2t.json", "historico-2t.json", "status.json"]
 
 
 class NaoConfigurado(Exception):
@@ -114,18 +116,18 @@ def configurar():
     return 0
 
 
-def carregar_publicado():
-    """Le o live.json publicado agora (HEAD do repo de dados), ou None se
+def carregar_publicado(nome="live.json"):
+    """Le o <nome> (live.json ou live-2t.json) publicado agora (HEAD do repo de dados), ou None se
     ainda nao existe nenhuma publicacao (primeira vez)."""
     if not configurado():
         raise NaoConfigurado("dados_publicos/ ainda nao foi configurado (rode --configurar, ver topo deste arquivo).")
     try:
         # encoding explicito: sem ele o Windows decodifica em cp1252 e quebra em
         # nome com acento (ex. "Á" = bytes C3 81; 0x81 nao existe em cp1252).
-        r = subprocess.run(["git", "show", "HEAD:live.json"], cwd=DADOS_DIR, capture_output=True,
+        r = subprocess.run(["git", "show", "HEAD:" + nome], cwd=DADOS_DIR, capture_output=True,
                            text=True, encoding="utf-8", timeout=15)
     except subprocess.TimeoutExpired:
-        raise GitIndisponivel("'git show HEAD:live.json' em dados_publicos/ nao respondeu em 15s")
+        raise GitIndisponivel("'git show HEAD:%s' em dados_publicos/ nao respondeu em 15s" % nome)
     if r.returncode != 0:
         return None
     try:
@@ -134,8 +136,8 @@ def carregar_publicado():
         return None
 
 
-def publicar(site_dir):
-    """Copia os JSON de dados de site_dir para dados_publicos/ e da commit+push.
+def publicar(site_dir, arquivos=None):
+    """Copia os JSON de dados de site_dir (`arquivos`, padrao ARQUIVOS) para dados_publicos/ e da commit+push.
     Devolve True se publicou (ou nao havia nada novo pra commitar), False em
     caso de falha (fica tudo pronto pra tentar de novo no proximo ciclo)."""
     if not configurado():
@@ -143,7 +145,7 @@ def publicar(site_dir):
         return False
 
     copiados = []
-    for nome in ARQUIVOS:
+    for nome in (arquivos or ARQUIVOS):
         origem = os.path.join(site_dir, nome)
         if os.path.isfile(origem):
             shutil.copy2(origem, os.path.join(DADOS_DIR, nome))

@@ -17,6 +17,9 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "dados_baixados")
 LIVE_OUT = os.path.join(HERE, "site", "live.json")
+# --turno 2: le dados_baixados_2t/ (tse_downloader.py --turno 2) e grava
+# site/live-2t.json, sem tocar no live.json do 1o turno - ver main()
+TURNO = 1
 
 UF_NOMES = {
     "ac": "Acre", "al": "Alagoas", "am": "Amazonas", "ap": "Amapá", "ba": "Bahia",
@@ -227,6 +230,11 @@ def main():
         d for d in os.listdir(SRC)
         if os.path.isdir(os.path.join(SRC, d)) and d not in NAO_CARGO
     )
+    if TURNO == 2 and not cargos_presentes:
+        # o TSE ainda nao publicou nenhum arquivo do 2o turno (404 em tudo):
+        # nao gera live-2t.json vazio (viraria ponto falso no historico-2t)
+        print("2o turno: nenhum arquivo de resultado baixado ainda (o TSE ainda nao publicou) - nada gerado.")
+        return 1
     for cargo_cod in cargos_presentes:
         cargo_dir = os.path.join(SRC, cargo_cod)
         scope_stats.setdefault(cargo_cod, {})
@@ -390,8 +398,12 @@ def main():
                   % (sg, len(labels), " | ".join(sorted(labels))))
 
     gerado_em = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    clausula_snapshot = computar_clausula_snapshot(scope_stats, agg_agrupamento, agrupamento_siglas_out)
-    clausula_snapshot["geradoEm"] = gerado_em
+    # 2o turno nao tem Dep. Federal: sem retrato da clausula (senao o
+    # update.py gravaria pontos zerados no historico-clausula.json do 1o)
+    clausula_snapshot = None
+    if TURNO == 1:
+        clausula_snapshot = computar_clausula_snapshot(scope_stats, agg_agrupamento, agrupamento_siglas_out)
+        clausula_snapshot["geradoEm"] = gerado_em
 
     timeline_snapshot = computar_timeline_snapshot(scope_stats, cand_rows, partido_list, cargos_presentes)
     timeline_snapshot["fonteAssinatura"] = hashlib.sha1(chr(10).join(sorted(assinatura_partes)).encode("utf-8")).hexdigest()[:16]
@@ -402,7 +414,8 @@ def main():
     bundle = {
         "meta": {
             "geradoEm": gerado_em,
-            "fonte": "dados_baixados (ver tse_downloader.py)",
+            "fonte": "%s (ver tse_downloader.py)" % os.path.basename(SRC),
+            "turno": TURNO,
         },
         "ufNomes": UF_NOMES,
         "cargoNomes": CARGO_NOMES,
@@ -432,4 +445,15 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    _ap = argparse.ArgumentParser()
+    _ap.add_argument("--turno", default="1", choices=["1", "2"])
+    if _ap.parse_args().turno == "2":
+        TURNO = 2
+        try:
+            _cfg = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8"))
+        except (OSError, ValueError):
+            _cfg = {}
+        SRC = os.path.join(HERE, (_cfg.get("segundo_turno") or {}).get("saida_dir", "dados_baixados_2t"))
+        LIVE_OUT = os.path.join(HERE, "site", "live-2t.json")
     raise SystemExit(main())

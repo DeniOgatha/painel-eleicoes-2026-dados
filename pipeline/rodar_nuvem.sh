@@ -12,7 +12,7 @@ set -u
 cd "$(dirname "$0")"
 ln -sfn .. dados_publicos
 mkdir -p site
-for f in live.json historico.json historico-clausula.json status.json; do
+for f in live.json historico.json historico-clausula.json status.json live-2t.json historico-2t.json; do
   [ -f "../$f" ] && cp "../$f" "site/$f"
 done
 
@@ -23,7 +23,8 @@ while [ "$(date +%s)" -lt "$FIM" ]; do
   n=$((n + 1))
   echo "================ ciclo $n - $(TZ=America/Sao_Paulo date '+%d/%m %H:%M:%S') (Brasilia) ================"
   # as linhas "falhou [eleitos] ... 404" sao normais ate o TSE divulgar os eleitos
-  python update.py 2>&1 | grep -v '^falhou \[eleitos\]' || true
+  # TURNO=2 (input do workflow): 2o turno, publica live-2t.json/historico-2t.json
+  python update.py --turno "${TURNO:-1}" 2>&1 | grep -v '^falhou \[eleitos\]' || true
   # publica no GitHub Pages (ver ../.github/workflows/pages.yml): push feito
   # com o GITHUB_TOKEN nao dispara o workflow sozinho, entao dispara aqui -
   # so' quando o ciclo gerou commit novo

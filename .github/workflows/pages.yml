@@ -15,7 +15,7 @@ name: Publicar dados no Pages
 on:
   push:
     branches: [main]
-    paths: ["live.json", "historico.json", "historico-clausula.json", "status.json"]
+    paths: ["live.json", "historico.json", "historico-clausula.json", "status.json", "live-2t.json", "historico-2t.json"]
   workflow_dispatch:
 
 permissions:
@@ -43,6 +43,8 @@ jobs:
         run: |
           mkdir _site
           cp live.json historico.json historico-clausula.json status.json _site/
+          # 2o turno: so' existem depois da 1a publicacao com --turno 2
+          for f in live-2t.json historico-2t.json; do [ -f "$f" ] && cp "$f" _site/ || true; done
           touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
