@@ -98,7 +98,7 @@ def trazer_publicado():
     if not publicar_dados.configurado():
         return
     publicar_dados.sincronizar()
-    nomes = ("historico.json", "historico-clausula.json") if TURNO["n"] == "1" else (TURNO["historico"],)
+    nomes =("historico.json", "historico-clausula.json") if TURNO["n"] == "1" else (TURNO["historico"],)
     for nome in nomes:
         pub = os.path.join(publicar_dados.DADOS_DIR, nome)
         loc = os.path.join(SITE_DIR, nome)
@@ -132,6 +132,8 @@ def main():
     if args.turno == "2":
         TURNO.update({"n": "2", "live": "live-2t.json", "historico": "historico-2t.json"})
     codigo = _main(args)
+    if not args.no_push:
+        publicar_dados.destravar_pages()  # so' age na nuvem
     # status.json vai a cada ciclo que consultou o TSE, mesmo sem dado novo
     # (quando o live.json foi publicado, o status ja' foi junto no mesmo commit)
     if CICLO["consultou_tse"] and not CICLO["publicou"] and not args.no_push:

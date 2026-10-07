@@ -86,6 +86,43 @@ def sincronizar():
     return True
 
 
+def destravar_pages(minutos=5):
+    """So' na nuvem (GitHub Actions). Em 06/10 15:06 uma execucao do pages.yml
+    ficou presa em "waiting" (ambiente github-pages) e nunca terminou - o
+    timeout-minutes nao conta nessa espera. Como o pages.yml tem
+    concurrency "pages", todo deploy seguinte ficou "pending" e foi
+    cancelado pelo proximo: o site parou de receber dados ate 07/10. Aqui,
+    a cada ciclo, cancela execucoes do pages.yml em "waiting" ha mais de
+    `minutos`. Falha aqui nunca derruba o ciclo."""
+    token, repo = os.environ.get("GH_TOKEN"), os.environ.get("GITHUB_REPOSITORY")
+    if not (os.environ.get("GITHUB_ACTIONS") and token and repo):
+        return
+    import datetime
+    import urllib.request
+    api = "https://api.github.com/repos/%s/actions" % repo
+    cab = {"Authorization": "Bearer " + token, "Accept": "application/vnd.github+json"}
+
+    def chamar(url, metodo="GET"):
+        req = urllib.request.Request(url, method=metodo, headers=cab, data=b"" if metodo == "POST" else None)
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.loads(r.read() or b"{}")
+
+    try:
+        runs = chamar(api + "/workflows/pages.yml/runs?status=waiting&per_page=20").get("workflow_runs", [])
+        agora = datetime.datetime.now(datetime.timezone.utc)
+        for run in runs:
+            criado = datetime.datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
+            if (agora - criado).total_seconds() < minutos * 60:
+                continue
+            try:
+                chamar("%s/runs/%d/cancel" % (api, run["id"]), "POST")
+            except Exception:
+                chamar("%s/runs/%d/force-cancel" % (api, run["id"]), "POST")
+            print("ATENCAO: deploy do Pages %d preso em 'waiting' desde %s - cancelado." % (run["id"], run["created_at"]))
+    except Exception as ex:
+        print("aviso: nao consegui checar deploys presos do Pages (%s)" % ex)
+
+
 def _push():
     """git push; se o outro lado (PC/nuvem) publicou no meio, sincroniza e tenta de novo."""
     push = _run_git(["push"], DADOS_DIR, timeout=45)
