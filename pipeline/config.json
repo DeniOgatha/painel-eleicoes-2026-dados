@@ -27,9 +27,9 @@
   ],
   "saida_dir": "dados_baixados",
   "segundo_turno": {
-    "_comentario": "update.py --turno 2. Codigos 6258/6260 = cdt2 das eleicoes 6257/6259 no ele-c.json oficial (conferido em 06/10/2026). ufs_governador = UFs com 2o turno de governador no resultado do 1o turno. Gera site/live-2t.json e historico-2t.json; o 1o turno (live.json) fica intocado.",
+    "_comentario": "update.py --turno 2. Codigos 6258/6260 = cdt2 das eleicoes 6257/6259 no ele-c.json oficial (conferido em 06/10/2026). ufs_governador = UFs com 2o turno de governador (lista oficial do TSE em mun-e006260-cm.json; RJ saiu em 25/10). Gera site/live-2t.json e historico-2t.json; o 1o turno (live.json) fica intocado.",
     "eleicoes_por_cargo": { "0001": "6258", "0003": "6260" },
-    "ufs_governador": ["ac", "am", "df", "es", "rj", "rn", "to"],
+    "ufs_governador": ["ac", "am", "df", "es", "rn", "to"],
     "saida_dir": "dados_baixados_2t"
   },
   "user_agent": "painel-eleicoes-2026/1.0 (uso pessoal, conforme instrucoes publicas do TSE)",
