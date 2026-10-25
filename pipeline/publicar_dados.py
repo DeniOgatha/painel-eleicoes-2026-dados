@@ -29,11 +29,13 @@ import os
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DADOS_DIR = os.path.join(HERE, "dados_publicos")
 CONFIG_PATH = os.path.join(HERE, "config.json")
 ARQUIVOS = ["live.json", "historico.json", "historico-clausula.json", "status.json"]
+STATUS_MIN_S = 60  # intervalo minimo entre publicacoes so' de status (publicar_status)
 # 2o turno (update.py --turno 2): arquivos proprios, o 1o turno fica como esta
 ARQUIVOS_2T = ["live-2t.json", "historico-2t.json", "status.json"]
 
@@ -224,6 +226,17 @@ def publicar_status(site_dir):
     origem = os.path.join(site_dir, "status.json")
     if not configurado() or not os.path.isfile(origem):
         return False
+    # Ciclo curto (15 s na nuvem desde 25/10): so' publica o status se o
+    # publicado tiver 60 s ou mais - senao cada ciclo sem dado novo viraria
+    # um deploy do Pages e atrasaria o deploy do proximo dado de verdade.
+    # As paginas so' acusam "parado" depois de 5 min (status-tse.js).
+    try:
+        pub = json.load(open(os.path.join(DADOS_DIR, "status.json"), encoding="utf-8"))
+        ultimo = datetime.fromisoformat(pub["ultimaTentativa"].replace("Z", "+00:00"))
+        if (datetime.now(timezone.utc) - ultimo).total_seconds() < STATUS_MIN_S:
+            return True
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     shutil.copy2(origem, os.path.join(DADOS_DIR, "status.json"))
     add = _run_git(["add", "status.json"], DADOS_DIR, timeout=30)
     if add is None or add.returncode != 0:

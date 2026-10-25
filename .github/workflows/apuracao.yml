@@ -19,8 +19,8 @@ on:
         description: "Horas desta execucao (max 5.5)"
         default: "5.5"
       intervalo:
-        description: "Segundos entre consultas ao TSE"
-        default: "60"
+        description: "Segundos entre consultas ao TSE (15 desde 25/10: o painel fica menos atrasado)"
+        default: "15"
       continuar:
         description: "Ao terminar, iniciar outra execucao sozinha? (sim/nao)"
         default: "sim"
