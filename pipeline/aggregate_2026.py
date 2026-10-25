@@ -405,6 +405,24 @@ def main():
         clausula_snapshot = computar_clausula_snapshot(scope_stats, agg_agrupamento, agrupamento_siglas_out)
         clausula_snapshot["geradoEm"] = gerado_em
 
+    # 2o turno: % de urnas apuradas de Presidente em cada UF (minimapa do
+    # painel geral). Vem do acompanhamento nacional (br-ab.json, eleicao de
+    # Presidente), que o TSE regera mais vezes que os arquivos de votos - por
+    # isso entra na assinatura (publica quando so' ele muda), mas NAO no
+    # fonteDg/fonteHg (que dizem a idade dos votos). Falhou = fica sem.
+    apuracao_uf = None
+    if TURNO == 2:
+        try:
+            ab = json.load(open(os.path.join(SRC, "acompanhamento", "br-ab.json"), encoding="utf-8"))
+            apuracao_uf = {"dg": ab.get("dg"), "hg": ab.get("hg"), "areas": {}}
+            for a in ab.get("abr", []):
+                s = a.get("s") or {}
+                apuracao_uf["areas"][a.get("cdabr")] = {"st": i(s.get("st")), "ts": i(s.get("ts"))}
+            assinatura_partes.append("ab|%s|%s|%s" % (ab.get("dg"), ab.get("hg"), ab.get("idg")))
+        except (OSError, ValueError, AttributeError) as ex:
+            print("aviso: sem % de apuracao por UF (acompanhamento/br-ab.json):", ex)
+            apuracao_uf = None
+
     timeline_snapshot = computar_timeline_snapshot(scope_stats, cand_rows, partido_list, cargos_presentes)
     timeline_snapshot["fonteAssinatura"] = hashlib.sha1(chr(10).join(sorted(assinatura_partes)).encode("utf-8")).hexdigest()[:16]
     timeline_snapshot["geradoEm"] = gerado_em
@@ -431,6 +449,8 @@ def main():
         "clausulaSnapshot": clausula_snapshot,
         "timelineSnapshot": timeline_snapshot,
     }
+    if apuracao_uf:
+        bundle["apuracaoUf"] = apuracao_uf
 
     os.makedirs(os.path.dirname(LIVE_OUT), exist_ok=True)
     with open(LIVE_OUT, "w", encoding="utf-8") as fh:
